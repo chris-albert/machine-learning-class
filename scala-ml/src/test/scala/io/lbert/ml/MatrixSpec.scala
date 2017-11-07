@@ -1,6 +1,7 @@
 package io.lbert.ml
 
 import org.scalatest.{Matchers, WordSpec}
+import io.lbert.ml.MathableInstances._
 
 class MatrixSpec extends WordSpec with Matchers {
 
@@ -76,22 +77,6 @@ class MatrixSpec extends WordSpec with Matchers {
     }
   }
 
-  "add" should {
-    "fail for matrices that aren't the same size" in {
-      Matrix.add(
-        Matrix.fill(MatrixSize(Row(2),Column(2)),1),
-        Matrix.fill(MatrixSize(Row(3),Column(2)),2)
-      ) shouldBe Left("Matrices are not the same size. 2x2 and 3x2 are not equal")
-    }
-    "add matrices" in {
-      Matrix.add(
-        Matrix.fill(MatrixSize(Row(3),Column(2)),1),
-        Matrix.fill(MatrixSize(Row(3),Column(2)),2)
-      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),3))
-      1
-    }
-  }
-
   "get" should {
     val twoByTwoMatrix = Matrix.fillFunc(MatrixSize(Row(2),Column(2)),mi => mi.row.underlying * mi.column.underlying)
     "fail if index doesn't exist" in {
@@ -114,6 +99,185 @@ class MatrixSpec extends WordSpec with Matchers {
         MatrixIndex(Row(1), Column(2)),
         MatrixIndex(Row(2), Column(1)),
         MatrixIndex(Row(2), Column(2))
+      )
+    }
+  }
+
+  "map" should {
+    "apply function to each element" in {
+      Matrix.map(Matrix.fill(MatrixSize(Row(2),Column(2)),1))(_ + "hi") shouldBe
+        Matrix.fill(MatrixSize(Row(2),Column(2)),"1hi")
+    }
+  }
+
+  "add" should {
+    "fail for matrices that aren't the same size" in {
+      Matrix.add(
+        Matrix.fill(MatrixSize(Row(2),Column(2)),1),
+        Matrix.fill(MatrixSize(Row(3),Column(2)),2)
+      ) shouldBe Left("Matrices are not the same size. 2x2 and 3x2 are not equal")
+    }
+    "add matrices" in {
+      Matrix.add(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),1),
+        Matrix.fill(MatrixSize(Row(3),Column(2)),2)
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),3))
+    }
+  }
+
+  "subtract" should {
+    "subtract matrices" in {
+      Matrix.subtract(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),1),
+        Matrix.fill(MatrixSize(Row(3),Column(2)),2)
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),-1))
+    }
+  }
+
+  "scalar multiply" should {
+    "multiply by scalar value" in {
+      Matrix.multiply(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),2), 3
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),6))
+    }
+  }
+
+  "scalar divide" should {
+    "fail if 0" in {
+      Matrix.divide(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),2), 0
+      ) shouldBe Left("Divide by 0 undefined")
+    }
+    "divide by scalar value" in {
+      Matrix.divide(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),10), 2
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),5))
+    }
+  }
+
+  "slice rows" should {
+    "give back rows" in {
+      Matrix.sliceRows(
+        Matrix(
+          Seq(
+            Seq(1,2),
+            Seq(3,4),
+            Seq(5,6)
+          )
+        )
+      ) shouldBe Seq(
+        Seq(1,2),
+        Seq(3,4),
+        Seq(5,6)
+      )
+    }
+  }
+
+  "slice columns" should {
+    "give back columns" in {
+      Matrix.sliceColumns(
+        Matrix(
+          Seq(
+            Seq(1,2),
+            Seq(3,4),
+            Seq(5,6)
+          )
+        )
+      ) shouldBe Seq(
+        Seq(1,3,5),
+        Seq(2,4,6)
+      )
+    }
+  }
+
+  "multiply" should {
+    "fail if matrix isn't the right size" in {
+      Matrix.multiply(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),1),
+        Matrix.fill(MatrixSize(Row(5),Column(5)),2)
+      ) shouldBe Left("The column count of first matrix must equal the row count of the second, you supplied 3x2 and 5x5")
+    }
+    "succeed" in {
+      Matrix.multiply(
+        Matrix[Double](
+          Seq(
+            Seq(1,2),
+            Seq(3,4),
+            Seq(5,6)
+          )
+        ),
+        Matrix[Double](
+          Seq(
+            Seq(1,2),
+            Seq(3,4)
+          )
+        )
+      ) shouldBe Right(
+        Matrix[Double](
+          Seq(
+            Seq(7,10),
+            Seq(15,22),
+            Seq(23,34)
+          )
+        )
+      )
+    }
+  }
+
+  "identity" should {
+    "create a 5x5 identity matrix" in {
+      Matrix.identity[Int](SquareMatrixSize(5)) shouldBe Matrix(
+        Seq(
+          Seq(1,0,0,0,0),
+          Seq(0,1,0,0,0),
+          Seq(0,0,1,0,0),
+          Seq(0,0,0,1,0),
+          Seq(0,0,0,0,1)
+        )
+      )
+    }
+  }
+
+  "transpose" should {
+    "transpose matrix" in {
+      Matrix.transpose(
+        Matrix(
+          Seq(
+            Seq(1,2),
+            Seq(3,4),
+            Seq(5,6)
+          )
+        )
+      ) shouldBe Matrix[Double](
+        Seq(
+          Seq(1,3,5),
+          Seq(2,4,6)
+        )
+      )
+    }
+  }
+
+  "inverse" should {
+    "fail if not square matrix" in {
+      Matrix.inverse(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),1)
+      ) shouldBe Left("Can only get inverse of square matrix, you supplied 3x2")
+    }
+    "get inverse matrix" in {
+      Matrix.inverse(
+        Matrix(
+          Seq(
+            Seq(1,3,3),
+            Seq(1,4,3),
+            Seq(1,3,4)
+          )
+        )
+      ) shouldBe Matrix[Double](
+        Seq(
+          Seq(7,-3,-3),
+          Seq(-1,1,0),
+          Seq(-1,0,1)
+        )
       )
     }
   }

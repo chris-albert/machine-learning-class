@@ -1,6 +1,7 @@
 package io.lbert.ml
 
 import cats.implicits._
+import io.lbert.ml.MathableSyntax._
 
 case class Row(underlying: Int) extends AnyVal
 case class Column(underlying: Int) extends AnyVal
@@ -8,6 +9,9 @@ case class Column(underlying: Int) extends AnyVal
 case class MatrixIndex(row: Row, column: Column)
 case class MatrixSize(rows: Row, columns: Column) {
   override def toString: String = s"${rows.underlying}x${columns.underlying}"
+}
+case class SquareMatrixSize(size: Int) {
+  def toMatrixSize: MatrixSize = MatrixSize(Row(size), Column(size))
 }
 case class VectorIndex(row: Row)
 case class VectorSize(rows: Row)
@@ -18,7 +22,69 @@ object Matrix {
 
   type MatrixResult[A] = Either[String, Matrix[A]]
 
-  def add(matrix1: Matrix[Int], matrix2: Matrix[Int]): MatrixResult[Int] = {
+  def add[A: Mathable](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
+    combine(matrix1, matrix2)(_ + _)
+
+  def subtract[A: Mathable](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
+    combine(matrix1, matrix2)(_ - _)
+
+  def multiply[A: Mathable](matrix: Matrix[A], a: A): MatrixResult[A] =
+    Right(map(matrix)(_ * a))
+
+  def multiply[A: Mathable](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] = {
+    val matrix1Size = size(matrix1)
+    val matrix2Size = size(matrix2)
+    if(matrix1Size.columns.underlying != matrix2Size.rows.underlying) {
+      Left(s"The column count of first matrix must equal the row count of the second, you supplied $matrix1Size and $matrix2Size")
+    } else {
+      val matrix2Columns = sliceColumns(matrix2)
+      Right(Matrix(sliceRows(matrix1).map(matrix1Row =>
+        matrix2Columns.map(matrix2Column =>
+          matrix1Row.zip(matrix2Column).map(i => i._1 * i._2).reduceLeft(_ + _)
+        )
+      )))
+    }
+  }
+
+  def isSquare[A](matrix: Matrix[A]): Boolean = {
+    val s = size(matrix)
+    s.columns.underlying == s.rows.underlying
+  }
+
+  def divide[A: Mathable](matrix: Matrix[A], a: A): MatrixResult[A] =
+    if(a == 0) Left("Divide by 0 undefined")
+    else Right(map(matrix)(_ / a))
+
+  def identity[A: Mathable](size: SquareMatrixSize): Matrix[A] = {
+    val m = implicitly[Mathable[A]]
+    mapWithIndex(fill(size.toMatrixSize,m.zero))((a,i) =>
+      if(i.row.underlying == i.column.underlying) m.one else a
+    )
+  }
+
+  def inverse[A](matrix: Matrix[A]): MatrixResult[A] = {
+    if(!isSquare(matrix)) {
+      Left(s"Can only get inverse of square matrix, you supplied ${size(matrix)}")
+    } else {
+      ???
+    }
+  }
+
+  def transpose[A](matrix: Matrix[A]): Matrix[A] =
+    Matrix(sliceColumns(matrix))
+
+  def sliceRows[A](matrix: Matrix[A]): Seq[Seq[A]] = matrix.elements
+
+  def sliceColumns[A](matrix: Matrix[A]): Seq[Seq[A]] = {
+    val s = size(matrix)
+    (1 to s.columns.underlying).map(column =>
+      (1 to s.rows.underlying).flatMap(row =>
+        get(matrix, MatrixIndex(Row(row), Column(column)))
+      )
+    )
+  }
+
+  def combine[A,B](matrix1: Matrix[A], matrix2: Matrix[A])(f: (A,A) => B): MatrixResult[B] = {
     val matrix1Size = size(matrix1)
     val matrix2Size = size(matrix2)
     if(matrix1Size != matrix2Size) {
@@ -28,10 +94,20 @@ object Matrix {
         for {
           i1 <- get(matrix1, index)
           i2 <- get(matrix2, index)
-        } yield i1 + i2
+        } yield f(i1,i2)
       }.grouped(matrix1Size.columns.underlying).toSeq))
     }
   }
+
+  def map[A,B](matrix: Matrix[A])(f: A => B): Matrix[B] =
+    Matrix(getIndexes(matrix).flatMap{index =>
+      get(matrix, index).map(f)
+    }.grouped(size(matrix).columns.underlying).toSeq)
+
+  def mapWithIndex[A,B](matrix: Matrix[A])(f: (A, MatrixIndex) => B): Matrix[B] =
+    Matrix(getIndexes(matrix).flatMap{index =>
+      get(matrix, index).map(f(_, index))
+    }.grouped(size(matrix).columns.underlying).toSeq)
 
   def get[A](matrix: Matrix[A], index: MatrixIndex): Option[A] =
     if(index.row.underlying > rows(matrix).underlying || index.column.underlying > columns(matrix).underlying) {
