@@ -62,13 +62,22 @@ object Matrix {
     )
   }
 
-  def inverse[A](matrix: Matrix[A]): MatrixResult[A] = {
+  def inverse[A: Mathable](matrix: Matrix[A]): MatrixResult[A] = {
     if(!isSquare(matrix)) {
       Left(s"Can only get inverse of square matrix, you supplied ${size(matrix)}")
     } else {
-      ???
+      val det = determinant(matrix)
+      if(det == implicitly[Mathable[A]].zero) {
+        Left(s"Determinate of matrix is 0")
+      } else {
+        divide(adjoint(matrix), det)
+      }
     }
   }
+
+  def adjoint[A](matrix: Matrix[A]): Matrix[A] = ???
+
+  def determinant[A](matrix: Matrix[A]): A = ???
 
   def transpose[A](matrix: Matrix[A]): Matrix[A] =
     Matrix(sliceColumns(matrix))
