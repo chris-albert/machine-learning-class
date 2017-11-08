@@ -281,4 +281,86 @@ class MatrixSpec extends WordSpec with Matchers {
       )
     }
   }
+
+  "determinant" should {
+    "fail if not square matrix" in {
+      Matrix.determinant(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),1)
+      ) shouldBe Left("Must be a square matrix, you supplied 3x2")
+    }
+    "get determinate of 2x2 matrix" in {
+      Matrix.determinant(
+        Matrix(
+          Seq(
+            Seq(1,4),
+            Seq(-1,9)
+          )
+        )
+      ) shouldBe Right(13)
+    }
+  }
+
+  "removeIndexRowColumn" should {
+    val threeByThree = Matrix(
+      Seq(
+        Seq(1,2,3),
+        Seq(4,5,6),
+        Seq(7,8,9)
+      )
+    )
+    "get row 1 col 2 minor of 3x3" in {
+      Matrix.removeIndexRowColumn(
+        threeByThree,
+        MatrixIndex(Row(1), Column(2))
+      ) shouldBe Right(Matrix(
+        Seq(
+          Seq(4,6),
+          Seq(7,9)
+        )
+      ))
+    }
+    "get row 1 col 1 minor of 3x3" in {
+      Matrix.removeIndexRowColumn(
+        threeByThree,
+        MatrixIndex(Row(1), Column(1))
+      ) shouldBe Right(Matrix(
+        Seq(
+          Seq(5,6),
+          Seq(8,9)
+        )
+      ))
+    }
+    "get row 3 col 3 minor of 3x3" in {
+      Matrix.removeIndexRowColumn(
+        threeByThree,
+        MatrixIndex(Row(3), Column(3))
+      ) shouldBe Right(Matrix(
+        Seq(
+          Seq(1,2),
+          Seq(4,5)
+        )
+      ))
+    }
+    "get row 2 col 2 minor of 3x3" in {
+      Matrix.removeIndexRowColumn(
+        threeByThree,
+        MatrixIndex(Row(2), Column(2))
+      ) shouldBe Right(Matrix(
+        Seq(
+          Seq(1,3),
+          Seq(7,9)
+        )
+      ))
+    }
+  }
+
+  "pow" should {
+    "get power of 5" in {
+      Matrix.pow(5,5) shouldBe 3125
+    }
+  }
+
+//  "cofactor" should {
+//    "get cofactor o"
+//  }
 }
