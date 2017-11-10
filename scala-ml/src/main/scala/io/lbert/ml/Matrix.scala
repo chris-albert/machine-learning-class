@@ -19,7 +19,11 @@ case class SquareMatrixSize(size: Int) {
 case class VectorIndex(row: Row)
 case class VectorSize(rows: Row)
 
-case class Matrix[A](elements: Seq[Seq[A]])
+case class Matrix[A](elements: Seq[Seq[A]]) {
+  override def toString: String =
+    elements.map(_.map(_.toString).mkString(" ")).mkString("\n")
+}
+
 
 object Matrix {
 
@@ -98,15 +102,29 @@ object Matrix {
         determinat2x2(matrix).right
       } else {
         val firstRowIndexes = getFirstRowIndices(matrix)
-        val a: Seq[ValueResult[A]] = firstRowIndexes.map { index =>
+        val result: Seq[ValueResult[A]] = firstRowIndexes.map { index =>
           for {
             nm <- removeIndexRowColumn(matrix, index).right
             d  <- determinant(nm).right
-          } yield cofactor(d, index)
+          } yield get(matrix, index).get * cofactor(d, index)
         }
-        ???
+        resultSequence(result).right.map[A](_.foldLeft(implicitly[Mathable[A]].zero)(_ + _)).right
       }
     } yield out
+  }
+
+  private def resultSequence[A](s: Seq[ValueResult[A]]): ValueResult[Seq[A]] = {
+
+    def loop(result: List[ValueResult[A]], accu: ValueResult[List[A]]): ValueResult[Seq[A]] = {
+      result match {
+        case Nil => accu
+        case Right(x) :: xs =>
+          loop(xs, accu.right.map(r => x :: r))
+        case Left(x) :: xs =>
+          Left(x)
+      }
+    }
+    loop(s.toList, Right(List.empty[A]))
   }
 
   private def determinat2x2[A: Mathable](matrix: Matrix[A]): ValueResult[A] = {
