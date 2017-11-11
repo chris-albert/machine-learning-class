@@ -383,6 +383,21 @@ class MatrixSpec extends WordSpec with Matchers {
     }
   }
 
+  "minor" should {
+    "get minor of 2x2" in {
+      val matrix = Matrix(
+        Seq(
+          Seq(2,5),
+          Seq(4,3)
+        )
+      )
+      Matrix.minor(matrix, MatrixIndex(Row(1), Column(1))) shouldBe Right(3)
+      Matrix.minor(matrix, MatrixIndex(Row(1), Column(2))) shouldBe Right(4)
+      Matrix.minor(matrix, MatrixIndex(Row(2), Column(1))) shouldBe Right(5)
+      Matrix.minor(matrix, MatrixIndex(Row(1), Column(1))) shouldBe Right(2)
+    }
+  }
+
 //  "cofactor" should {
 //    "get cofactor o"
 //  }

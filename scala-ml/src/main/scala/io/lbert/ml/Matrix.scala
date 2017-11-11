@@ -92,7 +92,10 @@ object Matrix {
       Right()
     }
 
-  def adjoint[A](matrix: Matrix[A]): Matrix[A] = ???
+  def adjoint[A](matrix: Matrix[A]): Matrix[A] = {
+    ???
+
+  }
 
   def determinant[A: Mathable](matrix: Matrix[A]): ValueResult[A] = {
     for {
@@ -161,9 +164,8 @@ object Matrix {
       _ <- indexExistsEither(matrix, index).right
     } yield {
       val _size = size(matrix)
-      if(_size.columns.underlying == 3) {
-        //compute 3x3 minor
-
+      if(_size.columns.underlying == 2) {
+        //compute 2x2 minor
       } else {
         //make smaller and recurse
       }
