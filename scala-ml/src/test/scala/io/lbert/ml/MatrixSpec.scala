@@ -1,7 +1,7 @@
 package io.lbert.ml
 
 import org.scalatest.{Matchers, WordSpec}
-import io.lbert.ml.MathableInstances._
+import io.lbert.ml.implicits.MathableInstances._
 
 class MatrixSpec extends WordSpec with Matchers {
 
@@ -296,15 +296,15 @@ class MatrixSpec extends WordSpec with Matchers {
         Matrix.fill(MatrixSize(Row(3),Column(2)),1)
       ) shouldBe Left("Must be a square matrix, you supplied 3x2")
     }
-//    "get determinate of 1x1 matrix" in {
-//      Matrix.determinant(
-//        Matrix(
-//          Seq(
-//            Seq(9)
-//          )
-//        )
-//      ) shouldBe Right(9)
-//    }
+    "get determinate of 1x1 matrix" in {
+      Matrix.determinant(
+        Matrix(
+          Seq(
+            Seq(9)
+          )
+        )
+      ) shouldBe Right(9)
+    }
     "get determinate of 2x2 matrix" in {
       Matrix.determinant(
         Matrix(

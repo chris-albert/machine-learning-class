@@ -1,4 +1,4 @@
-package io.lbert.ml
+package io.lbert.ml.implicits
 
 trait Mathable[A] {
   def add(a1: A, a2: A): A

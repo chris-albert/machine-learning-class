@@ -1,7 +1,10 @@
 package io.lbert.ml
 
+import cats._
+import cats.data._
 import cats.implicits._
-import io.lbert.ml.MathableSyntax._
+import io.lbert.ml.implicits.Mathable
+import io.lbert.ml.implicits.MathableSyntax._
 
 case class Row(underlying: Int) extends AnyVal
 case class Column(underlying: Int) extends AnyVal
@@ -32,6 +35,7 @@ object Matrix {
   type ValueResult[A] = Either[Error, A]
 
   def add[A: Mathable](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
+//  def add[A: Fractional](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
     combine(matrix1, matrix2)(_ + _)
 
   def subtract[A: Mathable](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
@@ -60,6 +64,13 @@ object Matrix {
     s.columns.underlying == s.rows.underlying
   }
 
+  def squareCheck[A,B](matrix: Matrix[A]): ValueResult[Unit] =
+    if(!isSquare(matrix)) {
+      Left(s"Must be a square matrix, you supplied ${size(matrix)}")
+    } else {
+      Right()
+    }
+
   def divide[A: Mathable](matrix: Matrix[A], a: A): MatrixResult[A] =
     if(a == 0) Left("Divide by 0 undefined")
     else Right(map(matrix)(_ / a))
@@ -85,13 +96,6 @@ object Matrix {
       } yield out
     }
 
-  def squareCheck[A,B](matrix: Matrix[A]): ValueResult[Unit] =
-    if(!isSquare(matrix)) {
-      Left(s"Must be a square matrix, you supplied ${size(matrix)}")
-    } else {
-      Right()
-    }
-
   def adjoint[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
     for {
       _        <- squareCheck(matrix).right
@@ -102,75 +106,27 @@ object Matrix {
     for {
       _ <- squareCheck(matrix).right
       s  = size(matrix)
-      out <-  if(s.columns.underlying == 2) {
-        determinat2x2(matrix).right
+      out <- if(s.columns.underlying == 1) {
+        Right(matrix.elements.head.head).right
       } else {
         val firstRowIndexes = getFirstRowIndices(matrix)
+        val a = cofactorMatrix(matrix).right.map(_.elements.head)
+          .right.map[A](_.foldLeft(implicitly[Mathable[A]].zero)(_ + _)).right
+//          .right.map[A](_.sum).right
         val result: Seq[ValueResult[A]] = firstRowIndexes.map { index =>
-          for {
-            nm <- removeIndexRowColumn(matrix, index).right
-            d  <- determinant(nm).right
-          } yield get(matrix, index).get * cofactor(d, index)
+          minor(matrix, index).right.map(cofactor(_,index) * get(matrix, index).get)
         }
         resultSequence(result).right.map[A](_.foldLeft(implicitly[Mathable[A]].zero)(_ + _)).right
       }
     } yield out
   }
 
-  private def resultSequence[A](s: Seq[ValueResult[A]]): ValueResult[Seq[A]] = {
-
-    def loop(result: List[ValueResult[A]], accu: ValueResult[List[A]]): ValueResult[Seq[A]] = {
-      result match {
-        case Nil => accu
-        case Right(x) :: xs =>
-          loop(xs, accu.right.map(r => x :: r))
-        case Left(x) :: xs =>
-          Left(x)
-      }
-    }
-    loop(s.toList, Right(List.empty[A])).right.map(_.reverse)
-  }
-
-  private def determinat2x2[A: Mathable](matrix: Matrix[A]): ValueResult[A] = {
-    val s = size(matrix)
-    if(s.columns.underlying == 2) {
-      (for {
-        a <- get(matrix,MatrixIndex(Row(1), Column(1)))
-        b <- get(matrix,MatrixIndex(Row(1), Column(2)))
-        c <- get(matrix,MatrixIndex(Row(2), Column(1)))
-        d <- get(matrix,MatrixIndex(Row(2), Column(2)))
-      } yield (a * d) - (b * c)).fold[ValueResult[A]](Left("Crazy error"))(Right(_))
-    } else {
-      Left("Must be 2x2 matrix")
-    }
-  }
-
-  private def getFirstRowIndices(matrix: Matrix[_]): Seq[MatrixIndex] =
-    matrix.elements.headOption.map(_.indices.map(i =>
-      MatrixIndex(Row(1), Column(i + 1)))).getOrElse(Seq.empty[MatrixIndex])
-
-  def removeIndexRowColumn[A](matrix: Matrix[A], index: MatrixIndex): MatrixResult[A] =
-    for {
-      _ <- squareCheck(matrix).right
-      _ <- indexExistsEither(matrix, index).right
-    } yield {
-      Matrix(matrix.elements.zipWithIndex
-        .filter{case (s,i) => (i + 1) != index.row.underlying}
-        .map(_._1.zipWithIndex.filter{case (s,i) => (i + 1) != index.column.underlying}.map(_._1)))
-    }
-
   def minor[A: Mathable](matrix: Matrix[A], index: MatrixIndex): ValueResult[A] =
     for {
-      _ <- squareCheck(matrix).right
-      _ <- indexExistsEither(matrix, index).right
-      _size = size(matrix)
-      out <- if(_size.columns.underlying == 2) {
-        removeIndexRowColumn(matrix, index).right.map(_.elements.head.head)
-      } else {
-        removeIndexRowColumn(matrix, index).right.flatMap { matrix =>
-          determinant(matrix)
-        }
-      }
+      _   <- squareCheck(matrix).right
+      _   <- indexExistsEither(matrix, index).right
+      sub <- removeIndexRowColumn(matrix, index).right
+      out <- determinant(sub).right
     } yield out
 
   def minorMatrix[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
@@ -189,6 +145,24 @@ object Matrix {
 
   def cofactor[A: Mathable](a: A, index: MatrixIndex): A =
     pow(implicitly[Mathable[A]].negOne,index.row.underlying + index.column.underlying) * a
+
+  private def resultSequence[A](s: Seq[ValueResult[A]]): ValueResult[Seq[A]] = {
+    s.toList.sequence.right.map(_.toSeq)
+  }
+
+  private def getFirstRowIndices(matrix: Matrix[_]): Seq[MatrixIndex] =
+    matrix.elements.headOption.map(_.indices.map(i =>
+      MatrixIndex(Row(1), Column(i + 1)))).getOrElse(Seq.empty[MatrixIndex])
+
+  def removeIndexRowColumn[A](matrix: Matrix[A], index: MatrixIndex): MatrixResult[A] =
+    for {
+      _ <- squareCheck(matrix).right
+      _ <- indexExistsEither(matrix, index).right
+    } yield {
+      Matrix(matrix.elements.zipWithIndex
+        .filter{case (s,i) => (i + 1) != index.row.underlying}
+        .map(_._1.zipWithIndex.filter{case (s,i) => (i + 1) != index.column.underlying}.map(_._1)))
+    }
 
   def pow[A: Mathable](a: A, p: Int): A =
     (0 until p).foldLeft(implicitly[Mathable[A]].one){ case (b, d) => b * a}
