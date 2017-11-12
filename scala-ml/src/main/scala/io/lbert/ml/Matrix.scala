@@ -84,63 +84,63 @@ object Matrix {
       Left(s"Can only get inverse of square matrix, you supplied ${size(matrix)}")
     } else {
       for {
-        det <- determinant(matrix).right
+        det <- determinant(matrix)
         out <- if(det == implicitly[Numeric[A]].zero) {
           Left(s"Can't get inverse of matrix since determinate of matrix is 0")
         } else {
-          adjoint(matrix).right.flatMap(divide(_,det))
+          adjoint(matrix).flatMap(divide(_,det))
         }
       } yield out
     }
 
   def adjoint[A: Numeric](matrix: Matrix[A]): MatrixResult[A] =
     for {
-      _        <- squareCheck(matrix).right
-      cofactor <- cofactorMatrix(matrix).right
+      _        <- squareCheck(matrix)
+      cofactor <- cofactorMatrix(matrix)
     } yield transpose(cofactor)
 
   def determinant[A: Numeric](matrix: Matrix[A]): ValueResult[A] =
     for {
-      _ <- squareCheck(matrix).right
+      _ <- squareCheck(matrix)
       s  = size(matrix)
       out <- if(s.columns.underlying == 1) {
-        Right(matrix.elements.head.head).right
+        Right(matrix.elements.head.head)
       } else {
         resultSequence(
           getFirstRowIndices(matrix).map(index =>
-            minor(matrix, index).right.map(cofactor(_,index) * get(matrix, index).get)
+            minor(matrix, index).map(cofactor(_,index) * get(matrix, index).get)
           )
-        ).right.map(_.sum).right
+        ).map(_.sum)
       }
     } yield out
 
   def minor[A: Numeric](matrix: Matrix[A], index: MatrixIndex): ValueResult[A] =
     for {
-      _   <- squareCheck(matrix).right
-      _   <- indexExistsEither(matrix, index).right
-      sub <- removeRowColumn(matrix, index).right
-      out <- determinant(sub).right
+      _   <- squareCheck(matrix)
+      _   <- indexExistsEither(matrix, index)
+      sub <- removeRowColumn(matrix, index)
+      out <- determinant(sub)
     } yield out
 
   def minorMatrix[A: Numeric](matrix: Matrix[A]): MatrixResult[A] =
     for {
-      _        <- squareCheck(matrix).right
+      _        <- squareCheck(matrix)
       indexes   = getIndexes(matrix)
-      elements <- resultSequence(indexes.map(minor(matrix,_))).right
-      out      <- build(size(matrix), elements).right
+      elements <- resultSequence(indexes.map(minor(matrix,_)))
+      out      <- build(size(matrix), elements)
     } yield out
 
   def cofactorMatrix[A: Numeric](matrix: Matrix[A]): MatrixResult[A] =
     for {
-      _     <- squareCheck(matrix).right
-      minor <- minorMatrix(matrix).right
+      _     <- squareCheck(matrix)
+      minor <- minorMatrix(matrix)
     } yield mapWithIndex(minor)(cofactor[A])
 
   def cofactor[A: Numeric](a: A, index: MatrixIndex): A =
     pow(implicitly[Numeric[A]].negate(implicitly[Numeric[A]].one),index.row.underlying + index.column.underlying) * a
 
   private def resultSequence[A](s: Seq[ValueResult[A]]): ValueResult[Seq[A]] =
-    s.toList.sequence.right.map(_.toSeq)
+    s.toList.sequence.map(_.toSeq)
 
   private def getFirstRowIndices(matrix: Matrix[_]): Seq[MatrixIndex] =
     matrix.elements.headOption.map(_.indices.map(i =>
@@ -148,8 +148,8 @@ object Matrix {
 
   def removeRowColumn[A](matrix: Matrix[A], index: MatrixIndex): MatrixResult[A] =
     for {
-      _ <- squareCheck(matrix).right
-      _ <- indexExistsEither(matrix, index).right
+      _ <- squareCheck(matrix)
+      _ <- indexExistsEither(matrix, index)
     } yield {
       Matrix(matrix.elements.zipWithIndex
         .filter{case (s,i) => (i + 1) != index.row.underlying}
