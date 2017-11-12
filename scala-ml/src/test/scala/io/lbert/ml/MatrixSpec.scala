@@ -1,7 +1,8 @@
 package io.lbert.ml
 
 import org.scalatest.{Matchers, WordSpec}
-import io.lbert.ml.implicits.MathableInstances._
+import scala.Numeric.IntIsIntegral._
+//import io.lbert.ml.implicits.MathableInstances._
 
 class MatrixSpec extends WordSpec with Matchers {
 
@@ -145,13 +146,13 @@ class MatrixSpec extends WordSpec with Matchers {
   "scalar divide" should {
     "fail if 0" in {
       Matrix.divide(
-        Matrix.fill(MatrixSize(Row(3),Column(2)),2), 0
+        Matrix.fill(MatrixSize(Row(3),Column(2)),2.0), 0.0
       ) shouldBe Left("Divide by 0 undefined")
     }
     "divide by scalar value" in {
       Matrix.divide(
-        Matrix.fill(MatrixSize(Row(3),Column(2)),10), 2
-      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),5))
+        Matrix.fill(MatrixSize(Row(3),Column(2)),10.0), 2.0
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),5.0))
     }
   }
 
@@ -260,11 +261,11 @@ class MatrixSpec extends WordSpec with Matchers {
   "inverse" should {
     "fail if not square matrix" in {
       Matrix.inverse(
-        Matrix.fill(MatrixSize(Row(3),Column(2)),1)
+        Matrix.fill(MatrixSize(Row(3),Column(2)),1.0)
       ) shouldBe Left("Can only get inverse of square matrix, you supplied 3x2")
     }
     "fail if matrix isn't inversable" in {
-      Matrix.inverse(Matrix(
+      Matrix.inverse(Matrix[Double](
         Seq(
           Seq(3,4),
           Seq(6,8)
@@ -273,14 +274,14 @@ class MatrixSpec extends WordSpec with Matchers {
     }
     "get inverse matrix" in {
       Matrix.inverse(
-        Matrix(
+        Matrix[Double](
           Seq(
             Seq(1,3,3),
             Seq(1,4,3),
             Seq(1,3,4)
           )
         )
-      ) shouldBe Right(Matrix(
+      ) shouldBe Right(Matrix[Double](
         Seq(
           Seq(7,-3,-3),
           Seq(-1,1,0),
@@ -349,7 +350,7 @@ class MatrixSpec extends WordSpec with Matchers {
       )
     )
     "get row 1 col 2 minor of 3x3" in {
-      Matrix.removeIndexRowColumn(
+      Matrix.removeRowColumn(
         threeByThree,
         MatrixIndex(Row(1), Column(2))
       ) shouldBe Right(Matrix(
@@ -360,7 +361,7 @@ class MatrixSpec extends WordSpec with Matchers {
       ))
     }
     "get row 1 col 1 minor of 3x3" in {
-      Matrix.removeIndexRowColumn(
+      Matrix.removeRowColumn(
         threeByThree,
         MatrixIndex(Row(1), Column(1))
       ) shouldBe Right(Matrix(
@@ -371,7 +372,7 @@ class MatrixSpec extends WordSpec with Matchers {
       ))
     }
     "get row 3 col 3 minor of 3x3" in {
-      Matrix.removeIndexRowColumn(
+      Matrix.removeRowColumn(
         threeByThree,
         MatrixIndex(Row(3), Column(3))
       ) shouldBe Right(Matrix(
@@ -382,7 +383,7 @@ class MatrixSpec extends WordSpec with Matchers {
       ))
     }
     "get row 2 col 2 minor of 3x3" in {
-      Matrix.removeIndexRowColumn(
+      Matrix.removeRowColumn(
         threeByThree,
         MatrixIndex(Row(2), Column(2))
       ) shouldBe Right(Matrix(
@@ -555,4 +556,5 @@ class MatrixSpec extends WordSpec with Matchers {
       ))
     }
   }
+
 }

@@ -1,10 +1,8 @@
 package io.lbert.ml
 
-import cats._
-import cats.data._
 import cats.implicits._
-import io.lbert.ml.implicits.Mathable
-import io.lbert.ml.implicits.MathableSyntax._
+import scala.Numeric.Implicits._
+import scala.Fractional.Implicits._
 
 case class Row(underlying: Int) extends AnyVal
 case class Column(underlying: Int) extends AnyVal
@@ -34,17 +32,16 @@ object Matrix {
   type MatrixResult[A] = Either[Error, Matrix[A]]
   type ValueResult[A] = Either[Error, A]
 
-  def add[A: Mathable](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
-//  def add[A: Fractional](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
+  def add[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
     combine(matrix1, matrix2)(_ + _)
 
-  def subtract[A: Mathable](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
+  def subtract[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
     combine(matrix1, matrix2)(_ - _)
 
-  def multiply[A: Mathable](matrix: Matrix[A], a: A): MatrixResult[A] =
+  def multiply[A: Numeric](matrix: Matrix[A], a: A): MatrixResult[A] =
     Right(map(matrix)(_ * a))
 
-  def multiply[A: Mathable](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] = {
+  def multiply[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] = {
     val matrix1Size = size(matrix1)
     val matrix2Size = size(matrix2)
     if(matrix1Size.columns.underlying != matrix2Size.rows.underlying) {
@@ -53,7 +50,7 @@ object Matrix {
       val matrix2Columns = sliceColumns(matrix2)
       Right(Matrix(sliceRows(matrix1).map(matrix1Row =>
         matrix2Columns.map(matrix2Column =>
-          matrix1Row.zip(matrix2Column).map(i => i._1 * i._2).reduceLeft(_ + _)
+          matrix1Row.zip(matrix2Column).map(i => i._1 * i._2).sum
         )
       )))
     }
@@ -71,24 +68,24 @@ object Matrix {
       Right()
     }
 
-  def divide[A: Mathable](matrix: Matrix[A], a: A): MatrixResult[A] =
+  def divide[A: Fractional](matrix: Matrix[A], a: A): MatrixResult[A] =
     if(a == 0) Left("Divide by 0 undefined")
     else Right(map(matrix)(_ / a))
 
-  def identity[A: Mathable](size: SquareMatrixSize): Matrix[A] = {
-    val m = implicitly[Mathable[A]]
+  def identity[A: Numeric](size: SquareMatrixSize): Matrix[A] = {
+    val m = implicitly[Numeric[A]]
     mapWithIndex(fill(size.toMatrixSize,m.zero))((a,i) =>
       if(i.row.underlying == i.column.underlying) m.one else a
     )
   }
 
-  def inverse[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
+  def inverse[A: Fractional](matrix: Matrix[A]): MatrixResult[A] =
     if(!isSquare(matrix)) {
       Left(s"Can only get inverse of square matrix, you supplied ${size(matrix)}")
     } else {
       for {
         det <- determinant(matrix).right
-        out <- if(det == implicitly[Mathable[A]].zero) {
+        out <- if(det == implicitly[Numeric[A]].zero) {
           Left(s"Can't get inverse of matrix since determinate of matrix is 0")
         } else {
           adjoint(matrix).right.flatMap(divide(_,det))
@@ -96,40 +93,36 @@ object Matrix {
       } yield out
     }
 
-  def adjoint[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
+  def adjoint[A: Numeric](matrix: Matrix[A]): MatrixResult[A] =
     for {
       _        <- squareCheck(matrix).right
       cofactor <- cofactorMatrix(matrix).right
     } yield transpose(cofactor)
 
-  def determinant[A: Mathable](matrix: Matrix[A]): ValueResult[A] = {
+  def determinant[A: Numeric](matrix: Matrix[A]): ValueResult[A] =
     for {
       _ <- squareCheck(matrix).right
       s  = size(matrix)
       out <- if(s.columns.underlying == 1) {
         Right(matrix.elements.head.head).right
       } else {
-        val firstRowIndexes = getFirstRowIndices(matrix)
-        val a = cofactorMatrix(matrix).right.map(_.elements.head)
-          .right.map[A](_.foldLeft(implicitly[Mathable[A]].zero)(_ + _)).right
-//          .right.map[A](_.sum).right
-        val result: Seq[ValueResult[A]] = firstRowIndexes.map { index =>
-          minor(matrix, index).right.map(cofactor(_,index) * get(matrix, index).get)
-        }
-        resultSequence(result).right.map[A](_.foldLeft(implicitly[Mathable[A]].zero)(_ + _)).right
+        resultSequence(
+          getFirstRowIndices(matrix).map(index =>
+            minor(matrix, index).right.map(cofactor(_,index) * get(matrix, index).get)
+          )
+        ).right.map(_.sum).right
       }
     } yield out
-  }
 
-  def minor[A: Mathable](matrix: Matrix[A], index: MatrixIndex): ValueResult[A] =
+  def minor[A: Numeric](matrix: Matrix[A], index: MatrixIndex): ValueResult[A] =
     for {
       _   <- squareCheck(matrix).right
       _   <- indexExistsEither(matrix, index).right
-      sub <- removeIndexRowColumn(matrix, index).right
+      sub <- removeRowColumn(matrix, index).right
       out <- determinant(sub).right
     } yield out
 
-  def minorMatrix[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
+  def minorMatrix[A: Numeric](matrix: Matrix[A]): MatrixResult[A] =
     for {
       _        <- squareCheck(matrix).right
       indexes   = getIndexes(matrix)
@@ -137,24 +130,23 @@ object Matrix {
       out      <- build(size(matrix), elements).right
     } yield out
 
-  def cofactorMatrix[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
+  def cofactorMatrix[A: Numeric](matrix: Matrix[A]): MatrixResult[A] =
     for {
       _     <- squareCheck(matrix).right
       minor <- minorMatrix(matrix).right
     } yield mapWithIndex(minor)(cofactor[A])
 
-  def cofactor[A: Mathable](a: A, index: MatrixIndex): A =
-    pow(implicitly[Mathable[A]].negOne,index.row.underlying + index.column.underlying) * a
+  def cofactor[A: Numeric](a: A, index: MatrixIndex): A =
+    pow(implicitly[Numeric[A]].negate(implicitly[Numeric[A]].one),index.row.underlying + index.column.underlying) * a
 
-  private def resultSequence[A](s: Seq[ValueResult[A]]): ValueResult[Seq[A]] = {
+  private def resultSequence[A](s: Seq[ValueResult[A]]): ValueResult[Seq[A]] =
     s.toList.sequence.right.map(_.toSeq)
-  }
 
   private def getFirstRowIndices(matrix: Matrix[_]): Seq[MatrixIndex] =
     matrix.elements.headOption.map(_.indices.map(i =>
       MatrixIndex(Row(1), Column(i + 1)))).getOrElse(Seq.empty[MatrixIndex])
 
-  def removeIndexRowColumn[A](matrix: Matrix[A], index: MatrixIndex): MatrixResult[A] =
+  def removeRowColumn[A](matrix: Matrix[A], index: MatrixIndex): MatrixResult[A] =
     for {
       _ <- squareCheck(matrix).right
       _ <- indexExistsEither(matrix, index).right
@@ -164,8 +156,8 @@ object Matrix {
         .map(_._1.zipWithIndex.filter{case (s,i) => (i + 1) != index.column.underlying}.map(_._1)))
     }
 
-  def pow[A: Mathable](a: A, p: Int): A =
-    (0 until p).foldLeft(implicitly[Mathable[A]].one){ case (b, d) => b * a}
+  def pow[A: Numeric](a: A, p: Int): A =
+    (0 until p).foldLeft(implicitly[Numeric[A]].one){ case (b, d) => b * a}
 
   def transpose[A](matrix: Matrix[A]): Matrix[A] =
     Matrix(sliceColumns(matrix))
