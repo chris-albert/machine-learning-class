@@ -263,23 +263,31 @@ class MatrixSpec extends WordSpec with Matchers {
         Matrix.fill(MatrixSize(Row(3),Column(2)),1)
       ) shouldBe Left("Can only get inverse of square matrix, you supplied 3x2")
     }
-//    "get inverse matrix" in {
-//      Matrix.inverse(
-//        Matrix(
-//          Seq(
-//            Seq(1,3,3),
-//            Seq(1,4,3),
-//            Seq(1,3,4)
-//          )
-//        )
-//      ) shouldBe Matrix[Double](
-//        Seq(
-//          Seq(7,-3,-3),
-//          Seq(-1,1,0),
-//          Seq(-1,0,1)
-//        )
-//      )
-//    }
+    "fail if matrix isn't inversable" in {
+      Matrix.inverse(Matrix(
+        Seq(
+          Seq(3,4),
+          Seq(6,8)
+        )
+      )) shouldBe Left("Can't get inverse of matrix since determinate of matrix is 0")
+    }
+    "get inverse matrix" in {
+      Matrix.inverse(
+        Matrix(
+          Seq(
+            Seq(1,3,3),
+            Seq(1,4,3),
+            Seq(1,3,4)
+          )
+        )
+      ) shouldBe Right(Matrix(
+        Seq(
+          Seq(7,-3,-3),
+          Seq(-1,1,0),
+          Seq(-1,0,1)
+        )
+      ))
+    }
   }
 
   "determinant" should {
@@ -288,6 +296,15 @@ class MatrixSpec extends WordSpec with Matchers {
         Matrix.fill(MatrixSize(Row(3),Column(2)),1)
       ) shouldBe Left("Must be a square matrix, you supplied 3x2")
     }
+//    "get determinate of 1x1 matrix" in {
+//      Matrix.determinant(
+//        Matrix(
+//          Seq(
+//            Seq(9)
+//          )
+//        )
+//      ) shouldBe Right(9)
+//    }
     "get determinate of 2x2 matrix" in {
       Matrix.determinant(
         Matrix(
@@ -394,11 +411,148 @@ class MatrixSpec extends WordSpec with Matchers {
       Matrix.minor(matrix, MatrixIndex(Row(1), Column(1))) shouldBe Right(3)
       Matrix.minor(matrix, MatrixIndex(Row(1), Column(2))) shouldBe Right(4)
       Matrix.minor(matrix, MatrixIndex(Row(2), Column(1))) shouldBe Right(5)
-      Matrix.minor(matrix, MatrixIndex(Row(1), Column(1))) shouldBe Right(2)
+      Matrix.minor(matrix, MatrixIndex(Row(2), Column(2))) shouldBe Right(2)
+    }
+    "get minor of 3x3" in {
+      val matrix = Matrix(
+        Seq(
+          Seq(2,3,4),
+          Seq(-1,5,1),
+          Seq(5,0,3)
+        )
+      )
+      Matrix.minor(matrix, MatrixIndex(Row(1), Column(1))) shouldBe Right(15)
+      Matrix.minor(matrix, MatrixIndex(Row(1), Column(2))) shouldBe Right(-8)
+      Matrix.minor(matrix, MatrixIndex(Row(1), Column(3))) shouldBe Right(-25)
+      Matrix.minor(matrix, MatrixIndex(Row(2), Column(1))) shouldBe Right(9)
+      Matrix.minor(matrix, MatrixIndex(Row(2), Column(2))) shouldBe Right(-14)
+      Matrix.minor(matrix, MatrixIndex(Row(2), Column(3))) shouldBe Right(-15)
+      Matrix.minor(matrix, MatrixIndex(Row(3), Column(1))) shouldBe Right(-17)
+      Matrix.minor(matrix, MatrixIndex(Row(3), Column(2))) shouldBe Right(6)
+      Matrix.minor(matrix, MatrixIndex(Row(3), Column(3))) shouldBe Right(13)
     }
   }
 
-//  "cofactor" should {
-//    "get cofactor o"
-//  }
+  "build" should {
+    "fail if elements don't match size" in {
+      Matrix.build(MatrixSize(Row(2), Column(2)), Seq(1,2,3)) shouldBe
+        Left("Elements size of 3 didn't match matrix size of 2x2")
+    }
+    "build 2x2 matrix" in {
+      Matrix.build(MatrixSize(Row(2), Column(2)), Seq(1,2,3,4)) shouldBe
+        Right(Matrix(
+          Seq(
+            Seq(1,2),
+            Seq(3,4)
+          )
+        ))
+    }
+    "build 3x2 matrix" in {
+      Matrix.build(MatrixSize(Row(3), Column(2)), Seq(1,2,3,4,5,6)) shouldBe
+        Right(Matrix(
+          Seq(
+            Seq(1,2),
+            Seq(3,4),
+            Seq(5,6)
+          )
+        ))
+    }
+  }
+
+  "minorMatrix" should {
+    "get minor matrix of 2x2" in {
+      Matrix.minorMatrix(Matrix(
+        Seq(
+          Seq(2, 5),
+          Seq(4, 3)
+        )
+      )) shouldBe Right(Matrix(
+        Seq(
+          Seq(3,4),
+          Seq(5,2)
+        )
+      ))
+    }
+    "get minor matrix of 4x4" in {
+      Matrix.minorMatrix(Matrix(
+        Seq(
+          Seq(1, 4,-1,0),
+          Seq(2, 3,5,-2),
+          Seq(0,3,1,6),
+          Seq(3,0,2,1)
+        )
+      )) shouldBe Right(Matrix(
+        Seq(
+          Seq(-60, 74,78,-24),
+          Seq(-41, -29,75,27),
+          Seq(39,17,-29,59),
+          Seq(152,44,-24,-26)
+        )
+      ))
+    }
+  }
+
+  "cofactorMatrix" should {
+    "get minor matrix of 2x2" in {
+      Matrix.cofactorMatrix(Matrix(
+        Seq(
+          Seq(2, 5),
+          Seq(4, 3)
+        )
+      )) shouldBe Right(Matrix(
+        Seq(
+          Seq(3,-4),
+          Seq(-5,2)
+        )
+      ))
+    }
+    "get minor matrix of 4x4" in {
+      Matrix.cofactorMatrix(Matrix(
+        Seq(
+          Seq(1, 4,-1,0),
+          Seq(2, 3,5,-2),
+          Seq(0,3,1,6),
+          Seq(3,0,2,1)
+        )
+      )) shouldBe Right(Matrix(
+        Seq(
+          Seq(-60, -74,78,24),
+          Seq(41, -29,-75,27),
+          Seq(39,-17,-29,-59),
+          Seq(-152,44,24,-26)
+        )
+      ))
+    }
+  }
+
+  "adjoint" should {
+    "get adjoint of 2x2 matrix" in {
+      Matrix.adjoint(Matrix(
+        Seq(
+          Seq(5,7),
+          Seq(4,3)
+        )
+      )) shouldBe Right(Matrix(
+        Seq(
+          Seq(3,-7),
+          Seq(-4,5)
+        )
+      ))
+    }
+    "get adjoint of 3x3 matrix" in {
+      Matrix.adjoint(Matrix(
+        Seq(
+          Seq(1,-1,0),
+          Seq(2,5,-2),
+          Seq(3,2,1)
+        )
+      )) shouldBe Right(Matrix(
+        Seq(
+          Seq(9,1,2),
+          Seq(-8,1,2),
+          Seq(-11,-5,7)
+        )
+      ))
+    }
+  }
 }

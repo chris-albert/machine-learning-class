@@ -71,19 +71,19 @@ object Matrix {
     )
   }
 
-  def inverse[A: Mathable](matrix: Matrix[A]): MatrixResult[A] = {
+  def inverse[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
     if(!isSquare(matrix)) {
       Left(s"Can only get inverse of square matrix, you supplied ${size(matrix)}")
     } else {
-//      val det = determinant(matrix)
-//      if(det == implicitly[Mathable[A]].zero) {
-//        Left(s"Determinate of matrix is 0")
-//      } else {
-//        divide(adjoint(matrix), det)
-//      }
-      ???
+      for {
+        det <- determinant(matrix).right
+        out <- if(det == implicitly[Mathable[A]].zero) {
+          Left(s"Can't get inverse of matrix since determinate of matrix is 0")
+        } else {
+          adjoint(matrix).right.flatMap(divide(_,det))
+        }
+      } yield out
     }
-  }
 
   def squareCheck[A,B](matrix: Matrix[A]): ValueResult[Unit] =
     if(!isSquare(matrix)) {
@@ -92,16 +92,17 @@ object Matrix {
       Right()
     }
 
-  def adjoint[A](matrix: Matrix[A]): Matrix[A] = {
-    ???
-
-  }
+  def adjoint[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
+    for {
+      _        <- squareCheck(matrix).right
+      cofactor <- cofactorMatrix(matrix).right
+    } yield transpose(cofactor)
 
   def determinant[A: Mathable](matrix: Matrix[A]): ValueResult[A] = {
     for {
       _ <- squareCheck(matrix).right
       s  = size(matrix)
-      out <- if(s.columns.underlying == 2) {
+      out <-  if(s.columns.underlying == 2) {
         determinat2x2(matrix).right
       } else {
         val firstRowIndexes = getFirstRowIndices(matrix)
@@ -127,7 +128,7 @@ object Matrix {
           Left(x)
       }
     }
-    loop(s.toList, Right(List.empty[A]))
+    loop(s.toList, Right(List.empty[A])).right.map(_.reverse)
   }
 
   private def determinat2x2[A: Mathable](matrix: Matrix[A]): ValueResult[A] = {
@@ -158,19 +159,33 @@ object Matrix {
         .map(_._1.zipWithIndex.filter{case (s,i) => (i + 1) != index.column.underlying}.map(_._1)))
     }
 
-  def minor[A](matrix: Matrix[A], index: MatrixIndex): ValueResult[A] =
+  def minor[A: Mathable](matrix: Matrix[A], index: MatrixIndex): ValueResult[A] =
     for {
       _ <- squareCheck(matrix).right
       _ <- indexExistsEither(matrix, index).right
-    } yield {
-      val _size = size(matrix)
-      if(_size.columns.underlying == 2) {
-        //compute 2x2 minor
+      _size = size(matrix)
+      out <- if(_size.columns.underlying == 2) {
+        removeIndexRowColumn(matrix, index).right.map(_.elements.head.head)
       } else {
-        //make smaller and recurse
+        removeIndexRowColumn(matrix, index).right.flatMap { matrix =>
+          determinant(matrix)
+        }
       }
-      ???
-    }
+    } yield out
+
+  def minorMatrix[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
+    for {
+      _        <- squareCheck(matrix).right
+      indexes   = getIndexes(matrix)
+      elements <- resultSequence(indexes.map(minor(matrix,_))).right
+      out      <- build(size(matrix), elements).right
+    } yield out
+
+  def cofactorMatrix[A: Mathable](matrix: Matrix[A]): MatrixResult[A] =
+    for {
+      _     <- squareCheck(matrix).right
+      minor <- minorMatrix(matrix).right
+    } yield mapWithIndex(minor)(cofactor[A])
 
   def cofactor[A: Mathable](a: A, index: MatrixIndex): A =
     pow(implicitly[Mathable[A]].negOne,index.row.underlying + index.column.underlying) * a
@@ -204,6 +219,14 @@ object Matrix {
           i2 <- get(matrix2, index)
         } yield f(i1,i2)
       }.grouped(matrix1Size.columns.underlying).toSeq))
+    }
+  }
+
+  def build[A](size: MatrixSize, elements: Seq[A]): MatrixResult[A] = {
+    if(elements.size != size.columns.underlying * size.rows.underlying) {
+      Left(s"Elements size of ${elements.size} didn't match matrix size of $size")
+    } else {
+      Right(Matrix[A](elements.grouped(size.columns.underlying).toSeq))
     }
   }
 
