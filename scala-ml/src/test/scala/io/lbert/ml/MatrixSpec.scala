@@ -1,8 +1,6 @@
 package io.lbert.ml
 
 import org.scalatest.{Matchers, WordSpec}
-import scala.Numeric.IntIsIntegral._
-//import io.lbert.ml.implicits.MathableInstances._
 
 class MatrixSpec extends WordSpec with Matchers {
 
