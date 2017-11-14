@@ -48,3 +48,46 @@ Notation
 - y = output variable (target)
 - (x,y) = one training example
 - (x^i,y^i) = i'th training example
+- h = hypothesis function (output from learning algorithm with training set)
+ h maps from x's to y's
+
+h(x) = d + e(x) (d and e are variables like theta 0 and theta 1)
+this is really just a different way to do slope intercept form
+y = m(x) + b
+## Cost function
+1/2m (sum from 1 to m) (h(x^i) - y^i)^2
+squared error cost function
+
+## Linear Algebra Review
+
+### Matricies
+Dimension of matrix: number of rows x number of columns
+```
+[
+  [1,2],
+  [2,3],
+  [3,2]
+]
+```
+this matrix would be a 3x2 matrix.
+
+Matrix elements: i,j in the i'th row and the j'th column
+First number is row and second is columns
+
+### Vector
+Is just a matrix with 1 column.
+```
+[
+  [1],
+  [2],
+  [3],
+  [4]
+]
+```
+
+## Multiple Features
+
+More notation:
+- n = number of Features
+- x^i = input (features) of i'th training example
+- x^ij = value of feature j in i'th training example
