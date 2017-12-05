@@ -35,8 +35,17 @@ object Matrix {
   def add[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
     combine(matrix1, matrix2)(_ + _)
 
+  def add[A: Numeric](matrix: Matrix[A], a: A): MatrixResult[A] =
+    Right(map(matrix)(_ + a))
+
   def subtract[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
     combine(matrix1, matrix2)(_ - _)
+
+  def subtract[A: Numeric](matrix: Matrix[A], a: A): MatrixResult[A] =
+    Right(map(matrix)(_ - a))
+
+  def subtract[A: Numeric](a: A, matrix: Matrix[A]): MatrixResult[A] =
+    Right(map(matrix)(a - _))
 
   def multiply[A: Numeric](matrix: Matrix[A], a: A): MatrixResult[A] =
     Right(map(matrix)(_ * a))
@@ -56,6 +65,26 @@ object Matrix {
     }
   }
 
+  def power[A: Numeric](matrix: Matrix[A], _power: Int): MatrixResult[A] =
+    Right(map(matrix)(scalarPower(_,_power)))
+
+  def concat[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
+    if(size(matrix1).rows.underlying != size(matrix2).rows.underlying) {
+      Left(s"Matrices must have the same number of rows to concat, you supplied ${size(matrix1)} and ${size(matrix2)}")
+    } else {
+      Right(Matrix(matrix1.elements.zip(matrix2.elements).map(s => s._1 ++ s._2)))
+    }
+
+  def stack[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
+    if(size(matrix1).columns.underlying != size(matrix2).columns.underlying) {
+      Left(s"Matrices must have the same number of columns to stack, you supplied ${size(matrix1)} and ${size(matrix2)}")
+    } else {
+      Right(Matrix(Seq(matrix1.elements, matrix2.elements).flatten))
+    }
+
+  def sum[A: Numeric](matrix: Matrix[A]): A =
+    matrix.elements.flatten.sum
+
   def isSquare[A](matrix: Matrix[A]): Boolean = {
     val s = size(matrix)
     s.columns.underlying == s.rows.underlying
@@ -69,7 +98,7 @@ object Matrix {
     }
 
   def divide[A: Fractional](matrix: Matrix[A], a: A): MatrixResult[A] =
-    if(a == 0) Left("Divide by 0 undefined")
+    if(a == implicitly[Fractional[A]].zero) Left("Divide by 0 undefined")
     else Right(map(matrix)(_ / a))
 
   def identity[A: Numeric](size: SquareMatrixSize): Matrix[A] = {
@@ -137,7 +166,9 @@ object Matrix {
     } yield mapWithIndex(minor)(cofactor[A])
 
   def cofactor[A: Numeric](a: A, index: MatrixIndex): A =
-    pow(implicitly[Numeric[A]].negate(implicitly[Numeric[A]].one),index.row.underlying + index.column.underlying) * a
+    scalarPower(implicitly[Numeric[A]].negate(implicitly[Numeric[A]].one),
+      index.row.underlying + index.column.underlying
+    ) * a
 
   private def resultSequence[A](s: Seq[ValueResult[A]]): ValueResult[Seq[A]] =
     s.toList.sequence.map(_.toSeq)
@@ -156,7 +187,15 @@ object Matrix {
         .map(_._1.zipWithIndex.filter{case (s,i) => (i + 1) != index.column.underlying}.map(_._1)))
     }
 
-  def pow[A: Numeric](a: A, p: Int): A =
+  def addFirstColumn[A](matrix: Matrix[A],a: A): Matrix[A] =
+    transpose(Matrix(Seq.fill(rows(matrix).underlying)(a) +: transpose(matrix).elements))
+
+  def getColumn[A](matrix: Matrix[A], column: Int): MatrixResult[A] =
+    for {
+      _ <- indexExistsEither(matrix, MatrixIndex(Row(1), Column(column)))
+    } yield transpose(Matrix(Seq(transpose(matrix).elements(column))))
+
+  def scalarPower[A: Numeric](a: A, p: Int): A =
     (0 until p).foldLeft(implicitly[Numeric[A]].one){ case (b, d) => b * a}
 
   def transpose[A](matrix: Matrix[A]): Matrix[A] =
@@ -249,6 +288,9 @@ object Matrix {
     fillFunc(size,_ => value)
 
   def empty[A]: Matrix[A] = Matrix[A](Seq.empty[Seq[A]])
+
+  def takeRows[A](matrix: Matrix[A], n: Int): Matrix[A] =
+    Matrix(matrix.elements.take(n))
 }
 
 object Vector {

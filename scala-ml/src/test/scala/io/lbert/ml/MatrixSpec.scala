@@ -122,6 +122,11 @@ class MatrixSpec extends WordSpec with Matchers {
         Matrix.fill(MatrixSize(Row(3),Column(2)),2)
       ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),3))
     }
+    "add scalar value" in {
+      Matrix.add(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),1),3
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),4))
+    }
   }
 
   "subtract" should {
@@ -130,6 +135,16 @@ class MatrixSpec extends WordSpec with Matchers {
         Matrix.fill(MatrixSize(Row(3),Column(2)),1),
         Matrix.fill(MatrixSize(Row(3),Column(2)),2)
       ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),-1))
+    }
+    "subtract from scalar value" in {
+      Matrix.subtract(
+        Matrix.fill(MatrixSize(Row(3),Column(2)),10),3
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),7))
+    }
+    "subtract scalar value from matrix" in {
+      Matrix.subtract(
+        3, Matrix.fill(MatrixSize(Row(3),Column(2)),10)
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3),Column(2)),-7))
     }
   }
 
@@ -393,9 +408,18 @@ class MatrixSpec extends WordSpec with Matchers {
     }
   }
 
-  "pow" should {
+  "scalarPower" should {
     "get power of 5" in {
-      Matrix.pow(5,5) shouldBe 3125
+      Matrix.scalarPower(5,5) shouldBe 3125
+    }
+
+  }
+
+  "power" should {
+    "get power of 3x3 matrix" in {
+      Matrix.power(
+        Matrix.fill(MatrixSize(Row(3), Column(2)), 2), 3
+      ) shouldBe Right(Matrix.fill(MatrixSize(Row(3), Column(2)), 8))
     }
   }
 
@@ -551,6 +575,67 @@ class MatrixSpec extends WordSpec with Matchers {
           Seq(-8,1,2),
           Seq(-11,-5,7)
         )
+      ))
+    }
+  }
+
+  "concat" should {
+    "fail if matrices aren't the same height" in {
+      Matrix.concat(
+        Matrix.fill(MatrixSize(Row(4), Column(2)), 3),
+        Matrix.fill(MatrixSize(Row(2), Column(2)), 1)
+      ) shouldBe Left("Matrices must have the same number of rows to concat, you supplied 4x2 and 2x2")
+    }
+    "concat matrices" in {
+      Matrix.concat(
+        Matrix.fill(MatrixSize(Row(4), Column(2)), 3),
+        Matrix.fill(MatrixSize(Row(4), Column(4)), 1)
+      ) shouldBe Right(Matrix(
+        Seq(
+          Seq(3,3,1,1,1,1),
+          Seq(3,3,1,1,1,1),
+          Seq(3,3,1,1,1,1),
+          Seq(3,3,1,1,1,1)
+        )
+      ))
+    }
+
+    "stack" should {
+      "fail if matrices aren't the same width" in {
+        Matrix.stack(
+          Matrix.fill(MatrixSize(Row(4), Column(2)), 3),
+          Matrix.fill(MatrixSize(Row(2), Column(1)), 1)
+        ) shouldBe Left("Matrices must have the same number of columns to stack, you supplied 4x2 and 2x1")
+      }
+    }
+    "stack matrices" in {
+      Matrix.stack(
+        Matrix.fill(MatrixSize(Row(2), Column(3)), 3),
+        Matrix.fill(MatrixSize(Row(3), Column(3)), 1)
+      ) shouldBe Right(Matrix(
+        Seq(
+          Seq(3,3,3),
+          Seq(3,3,3),
+          Seq(1,1,1),
+          Seq(1,1,1),
+          Seq(1,1,1)
+        )
+      ))
+    }
+  }
+
+  "addFirstColumn" should {
+    "add first column" in {
+      Matrix.addFirstColumn(Matrix(Seq(
+        Seq(2,3),
+        Seq(4,5),
+        Seq(6,7),
+        Seq(8,9),
+      )),1) shouldBe Matrix(Seq(
+        Seq(1,2,3),
+        Seq(1,4,5),
+        Seq(1,6,7),
+        Seq(1,8,9),
       ))
     }
   }

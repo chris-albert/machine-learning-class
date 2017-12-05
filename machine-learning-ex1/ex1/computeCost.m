@@ -21,7 +21,9 @@ J = 0;
 %J = sum / (2 * m)
 
 xTheta = X * theta;
+
 xThetaMinusY = xTheta - y;
+
 J = (1 / (2 * m)) * sum(xThetaMinusY .^ 2);
 
 % =========================================================================

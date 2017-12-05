@@ -91,3 +91,17 @@ More notation:
 - n = number of Features
 - x^i = input (features) of i'th training example
 - x^ij = value of feature j in i'th training example
+
+Feature scaling is good for when working with gradient decent and not needed for the normal equation.
+
+Gradient Descent
+- Need to choose learning rate
+- Needs many iterations
+- Works well when n (features) is large
+
+Normal equation
+- No need to choose learning rate
+- Don't need to iterate
+- Need to compute inverse of matrix (On^3)
+- Slow if n (features) is large
+- if n < 10k is slow, would use gradient descentt
