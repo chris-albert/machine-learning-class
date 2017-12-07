@@ -1,5 +1,6 @@
 package io.lbert.ml.fp
 
+import io.lbert.ml.ErrorOr
 import language.higherKinds
 import scala.util.Try
 
@@ -40,8 +41,8 @@ trait Monad[F[_]] extends Applicative[F] {
   override def ap[A,B](fab: F[A => B])(fa: F[A]): F[B] =
     flatMap(fab)(f => map(fa)(a => f(a)))
 
-  def map2[A,B,C](fa: F[A], fb: F[B])(f: (A, B) => C): F[C] =
-    flatMap(fa)(a => map(fb)(b => f(a,b)))
+  def map2[A,B,C](fa: F[A], fb: F[B])(f: (A, B) => F[C]): F[C] =
+    flatMap(fa)(a => flatMap(fb)(b => f(a,b)))
 
 }
 
@@ -77,10 +78,18 @@ object MonadInstances {
     override def pure[A](a: => A): List[A] = List(a)
   }
 
+
   implicit def eitherMonad[E]: Monad[({ type L[x] = Either[E, x] })#L] =
     new Monad[({ type L[x] = Either[E, x] })#L] {
       def map[A, B](fa: Either[E, A])(f: A => B): Either[E, B] = fa.map(f)
       override def flatMap[A, B](fa: Either[E, A])(f: (A) => Either[E, B]) = fa.flatMap(f)
+      override def pure[A](a: => A) = Right(a)
+    }
+
+  implicit def errorOrMonad: Monad[ErrorOr] =
+    new Monad[ErrorOr] {
+      override def map[A, B](fa: ErrorOr[A])(f: (A) => B) = fa.map(f)
+      override def flatMap[A, B](fa: ErrorOr[A])(f: (A) => ErrorOr[B]) = fa.flatMap(f)
       override def pure[A](a: => A) = Right(a)
     }
 

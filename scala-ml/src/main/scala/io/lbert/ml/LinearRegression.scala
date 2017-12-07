@@ -5,7 +5,7 @@ import io.lbert.ml.fp.Monad
 import scala.Fractional.Implicits._
 import io.lbert.ml.implicits.MatrixSyntax._
 import scala.util.{Success, Try}
-import io.lbert.ml.fp.MonadInstances.tryMonad
+import io.lbert.ml.fp.MonadInstances._
 
 object LinearRegression {
 
@@ -24,11 +24,11 @@ object LinearRegression {
   }
 
   def cost2(features: Matrix[Double], results: Matrix[Double], theta: Matrix[Double]): ValueResult[Double] = {
-    val f = Monad[Try].pure(features)
-    val t = Monad[Try].pure(theta)
-//    val a = Monad[Try].map2(f, t)((a,b) => a * b)
-    val a = Monad[Try].map2(f, t)(_ * _)
-//    val b = Monad[Try].map2(a,Monad[Try].pure(results))(_ - _)
+    val f = Monad[ErrorOr].pure(features)
+    val t = Monad[ErrorOr].pure(theta)
+    val a = Monad[ErrorOr].map2(f, t)(_ * _)
+    val r = Monad[ErrorOr].pure(results)
+    val o = Monad[ErrorOr].map2(a, r)(_ - _)
     ???
   }
 

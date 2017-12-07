@@ -5,7 +5,7 @@ import scala.io.{BufferedSource, Source}
 
 trait CSV {
 
-  type CSVResult[A] = IO[Either[String,A]]
+  type IOResult[A] = IO[ErrorOr[A]]
 
   def read(fileName: String): IO[List[List[String]]] =
     readRaw(fileName).map(parse)
