@@ -45,7 +45,7 @@ class LinearRegressionSpec extends WordSpec with Matchers {
 
         cost.map(roundToString) shouldBe Right(roundToString(32.0727))
 
-      }.run
+      }.unsafePerformIO()
     }
   }
 

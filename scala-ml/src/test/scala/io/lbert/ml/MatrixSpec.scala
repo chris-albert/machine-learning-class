@@ -1,5 +1,6 @@
 package io.lbert.ml
 
+import io.lbert.ml.Matrix._
 import org.scalatest.{Matchers, WordSpec}
 
 class MatrixSpec extends WordSpec with Matchers {
@@ -111,10 +112,9 @@ class MatrixSpec extends WordSpec with Matchers {
 
   "add" should {
     "fail for matrices that aren't the same size" in {
-      Matrix.add(
-        Matrix.fill(MatrixSize(Row(2),Column(2)),1),
-        Matrix.fill(MatrixSize(Row(3),Column(2)),2)
-      ) shouldBe Left("Matrices are not the same size. 2x2 and 3x2 are not equal")
+      val matrix1 = Matrix.fill(MatrixSize(Row(2), Column(2)), 1)
+      val matrix2 = Matrix.fill(MatrixSize(Row(3), Column(2)), 2)
+      Matrix.add(matrix1, matrix2) shouldBe Left(DifferentSizeError(matrix1, matrix2))
     }
     "add matrices" in {
       Matrix.add(
@@ -160,7 +160,7 @@ class MatrixSpec extends WordSpec with Matchers {
     "fail if 0" in {
       Matrix.divide(
         Matrix.fill(MatrixSize(Row(3),Column(2)),2.0), 0.0
-      ) shouldBe Left("Divide by 0 undefined")
+      ) shouldBe Left(DivideByZeroError)
     }
     "divide by scalar value" in {
       Matrix.divide(
@@ -206,10 +206,9 @@ class MatrixSpec extends WordSpec with Matchers {
 
   "multiply" should {
     "fail if matrix isn't the right size" in {
-      Matrix.multiply(
-        Matrix.fill(MatrixSize(Row(3),Column(2)),1),
-        Matrix.fill(MatrixSize(Row(5),Column(5)),2)
-      ) shouldBe Left("The column count of first matrix must equal the row count of the second, you supplied 3x2 and 5x5")
+      val matrix1 = Matrix.fill(MatrixSize(Row(3), Column(2)), 1)
+      val matrix2 = Matrix.fill(MatrixSize(Row(5), Column(5)), 2)
+      Matrix.multiply(matrix1, matrix2) shouldBe Left(ColumnSizeNotRowSizeError(matrix1, matrix2))
     }
     "succeed" in {
       Matrix.multiply(
@@ -273,17 +272,17 @@ class MatrixSpec extends WordSpec with Matchers {
 
   "inverse" should {
     "fail if not square matrix" in {
-      Matrix.inverse(
-        Matrix.fill(MatrixSize(Row(3),Column(2)),1.0)
-      ) shouldBe Left("Can only get inverse of square matrix, you supplied 3x2")
+      val matrix = Matrix.fill(MatrixSize(Row(3), Column(2)), 1.0)
+      Matrix.inverse(matrix) shouldBe Left(NotSquareError(matrix))
     }
     "fail if matrix isn't inversable" in {
-      Matrix.inverse(Matrix[Double](
+      val matrix = Matrix[Double](
         Seq(
-          Seq(3,4),
-          Seq(6,8)
+          Seq(3, 4),
+          Seq(6, 8)
         )
-      )) shouldBe Left("Can't get inverse of matrix since determinate of matrix is 0")
+      )
+      Matrix.inverse(matrix) shouldBe Left(InverseUndefinedError(matrix))
     }
     "get inverse matrix" in {
       Matrix.inverse(
@@ -306,9 +305,8 @@ class MatrixSpec extends WordSpec with Matchers {
 
   "determinant" should {
     "fail if not square matrix" in {
-      Matrix.determinant(
-        Matrix.fill(MatrixSize(Row(3),Column(2)),1)
-      ) shouldBe Left("Must be a square matrix, you supplied 3x2")
+      val matrix = Matrix.fill(MatrixSize(Row(3), Column(2)), 1)
+      Matrix.determinant(matrix) shouldBe Left(NotSquareError(matrix))
     }
     "get determinate of 1x1 matrix" in {
       Matrix.determinant(
@@ -459,7 +457,7 @@ class MatrixSpec extends WordSpec with Matchers {
   "build" should {
     "fail if elements don't match size" in {
       Matrix.build(MatrixSize(Row(2), Column(2)), Seq(1,2,3)) shouldBe
-        Left("Elements size of 3 didn't match matrix size of 2x2")
+        Left(ElementSizeError(MatrixSize(Row(2), Column(2)), Seq(1,2,3)))
     }
     "build 2x2 matrix" in {
       Matrix.build(MatrixSize(Row(2), Column(2)), Seq(1,2,3,4)) shouldBe
@@ -581,10 +579,9 @@ class MatrixSpec extends WordSpec with Matchers {
 
   "concat" should {
     "fail if matrices aren't the same height" in {
-      Matrix.concat(
-        Matrix.fill(MatrixSize(Row(4), Column(2)), 3),
-        Matrix.fill(MatrixSize(Row(2), Column(2)), 1)
-      ) shouldBe Left("Matrices must have the same number of rows to concat, you supplied 4x2 and 2x2")
+      val matrix1 = Matrix.fill(MatrixSize(Row(4), Column(2)), 3)
+      val matrix2 = Matrix.fill(MatrixSize(Row(2), Column(2)), 1)
+      Matrix.concat(matrix1, matrix2) shouldBe Left(DifferentRowsError(matrix1, matrix2))
     }
     "concat matrices" in {
       Matrix.concat(
@@ -602,10 +599,9 @@ class MatrixSpec extends WordSpec with Matchers {
 
     "stack" should {
       "fail if matrices aren't the same width" in {
-        Matrix.stack(
-          Matrix.fill(MatrixSize(Row(4), Column(2)), 3),
-          Matrix.fill(MatrixSize(Row(2), Column(1)), 1)
-        ) shouldBe Left("Matrices must have the same number of columns to stack, you supplied 4x2 and 2x1")
+        val matrix1 = Matrix.fill(MatrixSize(Row(4), Column(2)), 3)
+        val matrix2 = Matrix.fill(MatrixSize(Row(2), Column(1)), 1)
+        Matrix.stack(matrix1, matrix2) shouldBe Left(DifferentColumnsError(matrix1, matrix2))
       }
     }
     "stack matrices" in {

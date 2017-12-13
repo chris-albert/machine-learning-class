@@ -28,9 +28,34 @@ case class Matrix[A](elements: Seq[Seq[A]]) {
 
 object Matrix {
 
-  type Error = String
-  type MatrixResult[A] = Either[Error, Matrix[A]]
-  type ValueResult[A] = Either[Error, A]
+  type MatrixResult[A] = ErrorOr[Matrix[A]]
+  type ValueResult[A] = ErrorOr[A]
+
+  case class DifferentSizeError(m1: Matrix[_], m2: Matrix[_])
+    extends Exception(s"")
+
+  case class ElementSizeError(size: MatrixSize, elements: Seq[_])
+    extends Exception(s"Elements size of ${elements.size} didn't match matrix size of $size")
+
+  case class NotSquareError(m: Matrix[_])
+    extends Exception(s"Must be a square matrix, you supplied ${size(m)}")
+
+  case class InverseUndefinedError(m: Matrix[_])
+    extends Exception(s"")
+
+  case class ColumnSizeNotRowSizeError(m1: Matrix[_], m2: Matrix[_])
+    extends Exception(s"The column count of first matrix must equal the row count of the second, you supplied $m1 and $m2")
+
+  case class DifferentRowsError(m1: Matrix[_], m2: Matrix[_])
+    extends Exception(s"Matrices must have the same number of rows, you supplied ${size(m1)} and ${size(m2)}")
+
+  case class DifferentColumnsError(m1: Matrix[_], m2: Matrix[_])
+    extends Exception(s"Matrices must have the same number of columns, you supplied ${size(m1)} and ${size(m2)}")
+
+  case object DivideByZeroError extends Exception("Can't divide matrix by 0")
+
+  case class InvalidIndexError(index: MatrixIndex, m: Matrix[_])
+    extends Exception(s"Index $index is not valid for matrix of size ${size(m)}")
 
   def add[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
     combine(matrix1, matrix2)(_ + _)
@@ -54,7 +79,7 @@ object Matrix {
     val matrix1Size = size(matrix1)
     val matrix2Size = size(matrix2)
     if(matrix1Size.columns.underlying != matrix2Size.rows.underlying) {
-      Left(s"The column count of first matrix must equal the row count of the second, you supplied $matrix1Size and $matrix2Size")
+      Left(ColumnSizeNotRowSizeError(matrix1, matrix2))
     } else {
       val matrix2Columns = sliceColumns(matrix2)
       Right(Matrix(sliceRows(matrix1).map(matrix1Row =>
@@ -70,14 +95,14 @@ object Matrix {
 
   def concat[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
     if(size(matrix1).rows.underlying != size(matrix2).rows.underlying) {
-      Left(s"Matrices must have the same number of rows to concat, you supplied ${size(matrix1)} and ${size(matrix2)}")
+      Left(DifferentRowsError(matrix1, matrix2))
     } else {
       Right(Matrix(matrix1.elements.zip(matrix2.elements).map(s => s._1 ++ s._2)))
     }
 
   def stack[A: Numeric](matrix1: Matrix[A], matrix2: Matrix[A]): MatrixResult[A] =
     if(size(matrix1).columns.underlying != size(matrix2).columns.underlying) {
-      Left(s"Matrices must have the same number of columns to stack, you supplied ${size(matrix1)} and ${size(matrix2)}")
+      Left(DifferentColumnsError(matrix1, matrix2))
     } else {
       Right(Matrix(Seq(matrix1.elements, matrix2.elements).flatten))
     }
@@ -92,13 +117,13 @@ object Matrix {
 
   def squareCheck[A,B](matrix: Matrix[A]): ValueResult[Unit] =
     if(!isSquare(matrix)) {
-      Left(s"Must be a square matrix, you supplied ${size(matrix)}")
+      Left(NotSquareError(matrix))
     } else {
       Right()
     }
 
   def divide[A: Fractional](matrix: Matrix[A], a: A): MatrixResult[A] =
-    if(a == implicitly[Fractional[A]].zero) Left("Divide by 0 undefined")
+    if(a == implicitly[Fractional[A]].zero) Left(DivideByZeroError)
     else Right(map(matrix)(_ / a))
 
   def identity[A: Numeric](size: SquareMatrixSize): Matrix[A] = {
@@ -110,12 +135,12 @@ object Matrix {
 
   def inverse[A: Fractional](matrix: Matrix[A]): MatrixResult[A] =
     if(!isSquare(matrix)) {
-      Left(s"Can only get inverse of square matrix, you supplied ${size(matrix)}")
+      Left(NotSquareError(matrix))
     } else {
       for {
         det <- determinant(matrix)
         out <- if(det == implicitly[Numeric[A]].zero) {
-          Left(s"Can't get inverse of matrix since determinate of matrix is 0")
+          Left(InverseUndefinedError(matrix))
         } else {
           adjoint(matrix).flatMap(divide(_,det))
         }
@@ -216,7 +241,7 @@ object Matrix {
     val matrix1Size = size(matrix1)
     val matrix2Size = size(matrix2)
     if(matrix1Size != matrix2Size) {
-      Left(s"Matrices are not the same size. $matrix1Size and $matrix2Size are not equal")
+      Left(DifferentSizeError(matrix1, matrix2))
     } else {
       Right(Matrix(getIndexes(matrix1Size).flatMap {index =>
         for {
@@ -229,7 +254,7 @@ object Matrix {
 
   def build[A](size: MatrixSize, elements: Seq[A]): MatrixResult[A] = {
     if(elements.size != size.columns.underlying * size.rows.underlying) {
-      Left(s"Elements size of ${elements.size} didn't match matrix size of $size")
+      Left(ElementSizeError(size, elements))
     } else {
       Right(Matrix[A](elements.grouped(size.columns.underlying).toSeq))
     }
@@ -249,7 +274,7 @@ object Matrix {
     index.row.underlying <= rows(matrix).underlying && index.column.underlying <= columns(matrix).underlying
 
   def indexExistsEither(matrix: Matrix[_], index: MatrixIndex): ValueResult[Unit] =
-    if(indexExists(matrix, index)) Right(()) else Left(s"Index $index is not valid for matrix of size ${size(matrix)}")
+    if(indexExists(matrix, index)) Right(()) else Left(InvalidIndexError(index, matrix))
 
   def get[A](matrix: Matrix[A], index: MatrixIndex): Option[A] =
     if(!indexExists(matrix,index)) None

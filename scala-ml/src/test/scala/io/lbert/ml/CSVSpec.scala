@@ -29,7 +29,7 @@ class CSVSpec extends WordSpec with Matchers {
 //      CSV.read("asdf").run
 //    }
     "read test file" in {
-      CSV.read("test.csv").run shouldBe List(
+      CSV.read("test.csv").unsafePerformIO() shouldBe List(
         List("1", "2", "3", "4"),
         List("5", "6", "7", "8"),
         List("9", "10", "11", "12")
@@ -39,7 +39,7 @@ class CSVSpec extends WordSpec with Matchers {
 
   "readDouble" should {
     "successfully parse file" in {
-      CSV.readDouble("test.csv").run shouldBe List(
+      CSV.readDouble("test.csv").unsafePerformIO() shouldBe List(
         List[Double](1, 2, 3, 4),
         List[Double](5, 6, 7, 8),
         List[Double](9, 10, 11, 12)
